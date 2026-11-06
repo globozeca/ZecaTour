@@ -1,0 +1,13 @@
+{
+  "name": "zecatour",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/web", "packages/shared"],
+  "scripts": {
+    "dev": "npm run dev --workspace @zecatour/web",
+    "build": "npm run build --workspace @zecatour/web",
+    "lint": "npm run lint --workspace @zecatour/web",
+    "typecheck": "npm run typecheck --workspace @zecatour/web"
+  },
+  "engines": { "node": ">=20.0.0" }
+}
