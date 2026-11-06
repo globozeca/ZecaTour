@@ -5,6 +5,46 @@ import {createReservation} from '../reservations/actions';
 
 type JsonText = string | Record<string, string> | null | undefined;
 
+type TenantProfile = {
+  tenant_id: string;
+  tenant_name?: string | null;
+  brand_primary?: string | null;
+  brand_secondary?: string | null;
+  contact_phone?: string | null;
+  whatsapp_number?: string | null;
+  address?: string | null;
+  map_url?: string | null;
+};
+
+type MenuCategory = {
+  id: string;
+  name: JsonText;
+  description: JsonText;
+  sort_order: number;
+};
+
+type MenuProduct = {
+  id: string;
+  category_id: string | null;
+  name: JsonText;
+  description: JsonText;
+  price: number | string;
+  currency: string;
+  sort_order: number;
+};
+
+type BusinessHour = {
+  weekday: number;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_closed: boolean;
+};
+
+type SocialLink = {
+  platform: string;
+  url: string;
+};
+
 function localized(value: JsonText, locale: string) {
   if (typeof value === 'string') return value;
   if (!value || typeof value !== 'object') return '';
@@ -67,20 +107,20 @@ export default async function TenantHome({
 
   const t = copy[locale as keyof typeof copy];
   const supabase = await createClient();
-  let profile: Record<string, any> | null = null;
-  let categories: any[] = [];
-  let products: any[] = [];
-  let hours: any[] = [];
-  let socials: any[] = [];
+  let profile: TenantProfile | null = null;
+  let categories: MenuCategory[] = [];
+  let products: MenuProduct[] = [];
+  let hours: BusinessHour[] = [];
+  let socials: SocialLink[] = [];
 
   if (supabase) {
     const {data: profileData} = await supabase.rpc('get_public_tenant_profile_by_slug', {input_slug: slug});
     if (profileData?.length) {
-      profile = profileData[0] as Record<string, any>;
+      profile = profileData[0] as unknown as TenantProfile;
     } else {
       const {data: basicData, error} = await supabase.rpc('get_public_tenant_by_slug', {input_slug: slug});
       if (error || !basicData?.length) notFound();
-      profile = basicData[0] as Record<string, any>;
+      profile = basicData[0] as unknown as TenantProfile;
     }
 
     const tenantId = profile.tenant_id as string;
@@ -90,10 +130,10 @@ export default async function TenantHome({
       supabase.from('business_hours').select('weekday,opens_at,closes_at,is_closed').eq('tenant_id', tenantId).order('weekday'),
       supabase.from('social_links').select('platform,url').eq('tenant_id', tenantId).order('sort_order')
     ]);
-    categories = categoryResult.data || [];
-    products = productResult.data || [];
-    hours = hoursResult.data || [];
-    socials = socialResult.data || [];
+    categories = (categoryResult.data ?? []) as unknown as MenuCategory[];
+    products = (productResult.data ?? []) as unknown as MenuProduct[];
+    hours = (hoursResult.data ?? []) as unknown as BusinessHour[];
+    socials = (socialResult.data ?? []) as unknown as SocialLink[];
   } else if (slug !== 'alfa') {
     notFound();
   }
