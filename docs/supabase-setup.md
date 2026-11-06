@@ -17,6 +17,7 @@ No projecto Supabase, abrir **SQL Editor** e executar, pela ordem indicada, o co
 1. `supabase/migrations/0001_initial_schema.sql`
 2. `supabase/migrations/0002_security_hardening.sql`
 3. `supabase/migrations/0003_operational_integrity.sql`
+4. `supabase/migrations/0004_public_tenant_profile.sql`
 
 Executar cada migração uma única vez e confirmar que termina sem erros. Se uma migração falhar, parar e corrigir o erro antes de executar a seguinte. Não executar apenas partes de uma migração.
 
@@ -34,7 +35,7 @@ A chave `service_role` / secret key não é necessária para a página pública 
 
 ## 4. Verificação inicial
 
-Depois de aplicar as três migrações, confirmar no Table Editor:
+Depois de aplicar as quatro migrações, confirmar no Table Editor:
 - existe o tenant `ALFA Beach Bar` com slug `alfa`;
 - existe uma subscrição Starter em estado trialing;
 - existe uma linha de definições para o tenant;
@@ -49,6 +50,27 @@ from public.get_public_tenant_by_slug('alfa');
 
 A função deve devolver apenas os campos públicos definidos na migração. Não expõe reservas, membros ou dados de subscrição.
 
-## 5. Limites desta fase
+## 5. Criar o primeiro utilizador administrador do ALFA
+
+1. No Supabase, abrir **Authentication → Users** e criar/invitar a conta do responsável do ALFA.
+2. Copiar o endereço de email dessa conta.
+3. No SQL Editor, executar o comando abaixo, substituindo `EMAIL_DO_RESPONSAVEL` pelo email exacto:
+
+```sql
+insert into public.tenant_members (tenant_id, user_id, role)
+select t.id, u.id, 'owner'
+from public.tenants t
+join auth.users u on lower(u.email) = lower('EMAIL_DO_RESPONSAVEL')
+where t.slug = 'alfa'
+on conflict (tenant_id, user_id)
+do update set role = 'owner';
+```
+
+4. Configurar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no ambiente da aplicação.
+5. Abrir `/pt/admin/login` e entrar com a conta criada.
+
+A atribuição do papel é feita no SQL Editor, nunca através de um formulário público. O painel verifica a associação em `tenant_members` e as permissões continuam protegidas por RLS.
+
+## 6. Limites desta fase
 
 A execução das migrações não equivale a uma auditoria de segurança. Antes de produção, testar sessões anónimas, owner, manager, superadmin e dois tenants distintos. A criação de utilizadores e a atribuição inicial do papel owner serão implementadas no fluxo de onboarding, não por metadados enviados pelo browser.
