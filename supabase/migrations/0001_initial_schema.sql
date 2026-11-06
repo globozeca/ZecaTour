@@ -149,6 +149,30 @@ create table public.tenant_settings (
   updated_at timestamptz not null default now()
 );
 
+
+-- Safe public tenant lookup: exposes only fields intended for the public website.
+create or replace function public.get_public_tenant_by_slug(input_slug text)
+returns table (
+  tenant_id uuid,
+  tenant_name text,
+  tenant_slug text,
+  default_locale text,
+  supported_locales text[],
+  contact_phone text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select t.id, t.name, t.slug, t.default_locale, t.supported_locales, t.contact_phone
+  from public.tenants t
+  where t.slug = input_slug and t.status in ('trial','active')
+  limit 1;
+$;
+
+grant execute on function public.get_public_tenant_by_slug(text) to anon, authenticated;
+
 create index tenant_members_user_idx on public.tenant_members(user_id);
 create index pages_tenant_published_idx on public.pages(tenant_id,is_published);
 create index menu_categories_tenant_idx on public.menu_categories(tenant_id,is_active,sort_order);
@@ -282,6 +306,7 @@ using (public.has_tenant_role(tenant_id)) with check (public.has_tenant_role(ten
 
 -- Grants are constrained further by RLS policies.
 grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.tenants to authenticated;
 grant select on public.pages, public.menu_categories, public.menu_products,
   public.galleries, public.business_hours, public.social_links to anon, authenticated;
 grant insert on public.reservations to anon, authenticated;
