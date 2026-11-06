@@ -173,6 +173,21 @@ $;
 
 grant execute on function public.get_public_tenant_by_slug(text) to anon, authenticated;
 
+
+-- Initial demonstration tenant. Content can be completed from the owner panel.
+insert into public.tenants (name, slug, status, default_locale, supported_locales)
+values ('ALFA Beach Bar', 'alfa', 'trial', 'pt', array['pt','en','fr'])
+on conflict (slug) do nothing;
+
+insert into public.subscriptions (tenant_id, plan_code, status, trial_ends_at)
+select id, 'starter', 'trialing', now() + interval '30 days'
+from public.tenants where slug = 'alfa'
+on conflict (tenant_id) do nothing;
+
+insert into public.tenant_settings (tenant_id)
+select id from public.tenants where slug = 'alfa'
+on conflict (tenant_id) do nothing;
+
 create index tenant_members_user_idx on public.tenant_members(user_id);
 create index pages_tenant_published_idx on public.pages(tenant_id,is_published);
 create index menu_categories_tenant_idx on public.menu_categories(tenant_id,is_active,sort_order);
