@@ -50,4 +50,5 @@ Fundação técnica em preparação. A migração SQL é a fonte de verdade para
 - [Arquitectura](docs/architecture.md)
 - [Plano de implementação](docs/implementation-plan.md)
 - [Configuração e deployment](docs/deployment.md)
+- [Preparação do Supabase](docs/supabase-setup.md)
 - [Segurança](docs/security.md)
