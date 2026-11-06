@@ -164,12 +164,12 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select t.id, t.name, t.slug, t.default_locale, t.supported_locales, t.contact_phone
   from public.tenants t
   where t.slug = input_slug and t.status in ('trial','active')
   limit 1;
-$;
+$$;
 
 grant execute on function public.get_public_tenant_by_slug(text) to anon, authenticated;
 
