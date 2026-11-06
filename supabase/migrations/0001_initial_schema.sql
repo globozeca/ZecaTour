@@ -202,8 +202,6 @@ alter table public.social_links enable row level security;
 alter table public.tenant_settings enable row level security;
 
 -- Tenant discovery is restricted to active/trial tenants; private tenant data remains protected.
-create policy tenants_public_read on public.tenants for select to anon, authenticated
-using (status in ('trial','active'));
 create policy tenants_admin_all on public.tenants for all to authenticated
 using (public.is_platform_admin()) with check (public.is_platform_admin());
 
@@ -279,15 +277,13 @@ using (public.is_active_tenant(tenant_id));
 create policy socials_tenant_manage on public.social_links for all to authenticated
 using (public.has_tenant_role(tenant_id)) with check (public.has_tenant_role(tenant_id));
 
-create policy settings_public_read on public.tenant_settings for select to anon, authenticated
-using (public.is_active_tenant(tenant_id));
 create policy settings_tenant_manage on public.tenant_settings for all to authenticated
 using (public.has_tenant_role(tenant_id)) with check (public.has_tenant_role(tenant_id));
 
 -- Grants are constrained further by RLS policies.
 grant usage on schema public to anon, authenticated;
-grant select on public.tenants, public.pages, public.menu_categories, public.menu_products,
-  public.galleries, public.business_hours, public.social_links, public.tenant_settings to anon, authenticated;
+grant select on public.pages, public.menu_categories, public.menu_products,
+  public.galleries, public.business_hours, public.social_links to anon, authenticated;
 grant insert on public.reservations to anon, authenticated;
 grant select, insert, update, delete on public.profiles, public.tenant_members,
   public.subscriptions, public.pages, public.menu_categories, public.menu_products,
