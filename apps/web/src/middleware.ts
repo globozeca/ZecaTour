@@ -6,7 +6,7 @@ import {routing} from './i18n/routing';
 const handleI18nRouting = createMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
-  let response = handleI18nRouting(request);
+  const response = handleI18nRouting(request);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
