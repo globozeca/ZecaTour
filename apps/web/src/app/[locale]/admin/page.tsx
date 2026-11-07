@@ -9,6 +9,14 @@ import {
 } from './actions';
 import GalleryManager from './GalleryManager';
 
+type TenantMembership = {
+  tenant_id: string;
+  tenant_name: string;
+  tenant_slug: string;
+  tenant_status: 'trial' | 'active' | 'suspended' | 'cancelled';
+  member_role: 'owner' | 'manager';
+};
+
 export default async function AdminDashboard({
   params,
   searchParams
@@ -29,7 +37,7 @@ export default async function AdminDashboard({
   const {data: tenantRows, error: tenantsError} = await supabase.rpc('get_my_tenants');
   if (tenantsError) return <main className="min-h-screen p-10">Não foi possível carregar as empresas associadas à conta.</main>;
 
-  const tenants = tenantRows || [];
+  const tenants = (tenantRows || []) as TenantMembership[];
   const tenant = query.tenant
     ? tenants.find((item) => item.tenant_id === query.tenant)
     : tenants[0];
