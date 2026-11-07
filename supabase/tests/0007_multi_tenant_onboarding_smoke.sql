@@ -40,7 +40,8 @@ begin
     where n.nspname = 'public'
       and p.proname = 'create_tenant_for_current_user'
       and p.prosecdef = true
-      and p.proconfig @> array['search_path=']
+      and p.proconfig is not null
+      and exists (select 1 from unnest(p.proconfig) setting where setting like 'search_path=%')
   ) then
     raise exception 'Tenant creation RPC must be SECURITY DEFINER with empty search_path';
   end if;
