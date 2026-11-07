@@ -1,6 +1,6 @@
 -- Multi-tenant onboarding and authenticated tenant discovery.
 -- Existing migrations remain immutable. Tenant creation is atomic and self-service
--- creates the caller as owner; managers cannot create or claim tenant ownership.
+-- creates the caller as owner; tenant membership is never inferred from a client-supplied ID.
 
 begin;
 
