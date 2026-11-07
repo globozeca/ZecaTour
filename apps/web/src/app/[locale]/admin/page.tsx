@@ -2,6 +2,7 @@ import {redirect} from 'next/navigation';
 import {setRequestLocale} from 'next-intl/server';
 import {createClient} from '@/lib/supabase/server';
 import {createMenuCategory, createMenuProduct, logoutAdmin, updateBusinessSettings, updateReservationStatus} from './actions';
+import GalleryManager from './GalleryManager';
 
 export default async function AdminDashboard({
   params,
@@ -34,16 +35,18 @@ export default async function AdminDashboard({
     </div>
   </main>;
 
-  const [settingsResult, reservationsResult, categoriesResult, productsResult] = await Promise.all([
+  const [settingsResult, reservationsResult, categoriesResult, productsResult, galleryResult] = await Promise.all([
     supabase.from('tenant_settings').select('address,map_url,whatsapp_number,brand_primary,brand_secondary').eq('tenant_id', tenant.tenant_id).maybeSingle(),
     supabase.from('reservations').select('id,customer_name,customer_phone,customer_email,reservation_date,reservation_time,party_size,message,status,created_at').eq('tenant_id', tenant.tenant_id).order('created_at', {ascending: false}).limit(100),
     supabase.from('menu_categories').select('id,name,is_active,sort_order').eq('tenant_id', tenant.tenant_id).order('sort_order'),
-    supabase.from('menu_products').select('id,name,price,currency,is_available,category_id').eq('tenant_id', tenant.tenant_id).order('sort_order')
+    supabase.from('menu_products').select('id,name,price,currency,is_available,category_id').eq('tenant_id', tenant.tenant_id).order('sort_order'),
+    supabase.from('galleries').select('id,title,alt_text,image_path,sort_order,is_published').eq('tenant_id', tenant.tenant_id).order('sort_order')
   ]);
   const settings = settingsResult.data;
   const reservations = reservationsResult.data || [];
   const categories = categoriesResult.data || [];
   const products = productsResult.data || [];
+  const galleryItems = galleryResult.data || [];
   const statusLabel: Record<string,string> = {pending:'Pendente',confirmed:'Confirmada',rejected:'Recusada',cancelled:'Cancelada',completed:'Concluída'};
   const alertText = query.saved ? 'Alterações guardadas.' : query.error ? 'Não foi possível guardar. Verifique os campos e as permissões.' : '';
 
@@ -98,6 +101,8 @@ export default async function AdminDashboard({
           <div><h3 className="mb-3 font-semibold">Produtos existentes</h3>{products.length ? <ul className="space-y-2 text-sm">{products.map((product) => <li key={product.id} className="flex justify-between gap-3 rounded-lg bg-[#f7f5ef] p-3"><span>{product.name?.pt || product.name?.en || 'Produto'}</span><strong>{Number(product.price).toLocaleString('pt-PT')} Kz</strong></li>)}</ul> : <p className="text-sm text-[#66756d]">Ainda não existem produtos.</p>}</div>
         </div>
       </section>
+
+      <GalleryManager tenantId={tenant.tenant_id} initialItems={galleryItems} />
 
       <section className="rounded-2xl bg-white p-6 sm:p-8">
         <h2 className="text-xl font-semibold">Pedidos de reserva</h2>
