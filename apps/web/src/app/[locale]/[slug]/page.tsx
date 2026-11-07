@@ -182,7 +182,7 @@ export default async function TenantHome({
 
       <section id="menu" className="mx-auto max-w-7xl scroll-mt-8 px-6 py-20">
         <div className="mb-10 flex items-end justify-between gap-4">
-          <div><p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a56e3f]">ALFA</p><h2 className="text-4xl font-semibold">{t.menu}</h2></div>
+          <div><p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a56e3f]">{tenantName.toUpperCase()}</p><h2 className="text-4xl font-semibold">{t.menu}</h2></div>
           <span className="text-sm text-[#66756d]">AOA</span>
         </div>
         {categories.length === 0 || products.length === 0 ? (
