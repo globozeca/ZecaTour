@@ -1,4 +1,7 @@
+import {notFound} from 'next/navigation';
+import {hasLocale} from 'next-intl';
 import {setRequestLocale} from 'next-intl/server';
+import {routing} from '@/i18n/routing';
 
 const copy = {
   pt: {
@@ -41,6 +44,7 @@ const copy = {
 
 export default async function LocaleIndex({params}: {params: Promise<{locale: string}>}) {
   const {locale} = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
   const t = copy[locale as keyof typeof copy] || copy.pt;
 
