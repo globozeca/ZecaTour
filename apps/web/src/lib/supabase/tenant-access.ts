@@ -16,7 +16,14 @@ export async function getCurrentUserTenantRole(
     .eq('user_id', authData.user.id)
     .maybeSingle();
 
-  if (error || !membership) return null;
-  if (membership.role !== 'owner' && membership.role !== 'manager') return null;
-  return membership.role;
+  if (!error && membership && (membership.role === 'owner' || membership.role === 'manager')) {
+    return membership.role;
+  }
+
+  const {data: platformAccess, error: platformError} = await supabase.rpc('has_tenant_role', {
+    target_tenant: tenantId,
+    allowed_roles: ['owner', 'manager']
+  });
+  if (!platformError && platformAccess === true) return 'owner';
+  return null;
 }
