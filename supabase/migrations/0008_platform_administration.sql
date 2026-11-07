@@ -4,6 +4,16 @@
 
 begin;
 
+create or replace function public.get_my_tenants()
+returns table (tenant_id uuid, tenant_name text, tenant_slug text, tenant_status public.tenant_status, member_role public.member_role)
+language sql stable security definer set search_path = '' as $
+  select t.id, t.name, t.slug, t.status, coalesce(tm.role, 'owner'::public.member_role)
+  from public.tenants t
+  left join public.tenant_members tm on tm.tenant_id = t.id and tm.user_id = (select auth.uid())
+  where public.is_platform_admin() or (tm.user_id = (select auth.uid()) and t.status in ('trial', 'active'))
+  order by t.name;
+$;
+
 create or replace function public.get_platform_tenants()
 returns table (
   tenant_id uuid,
