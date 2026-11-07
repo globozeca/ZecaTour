@@ -183,8 +183,8 @@ export async function saveBusinessHour(formData: FormData) {
   const {locale, tenantId, supabase} = await requireTenant(formData);
   const weekday = z.coerce.number().int().min(0).max(6).safeParse(formData.get('weekday'));
   const isClosed = formData.get('is_closed') === 'on';
-  const opensAt = z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d$/).safeParse(formData.get('opens_at'));
-  const closesAt = z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d$/).safeParse(formData.get('closes_at'));
+  const opensAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('opens_at'));
+  const closesAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('closes_at'));
   if (!weekday.success || (!isClosed && (!opensAt.success || !closesAt.success))) back(locale, tenantId, 'hours');
   const {error} = await supabase.from('business_hours').upsert({
     tenant_id: tenantId, weekday: weekday.data, is_closed: isClosed,
