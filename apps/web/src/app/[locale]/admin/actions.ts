@@ -38,8 +38,11 @@ export async function loginAdmin(formData: FormData) {
 
   const supabase = await createClient();
   if (!supabase) redirect('/' + locale + '/admin/login?error=config');
-  const {error} = await supabase.auth.signInWithPassword({email: email.data, password: password.data});
-  if (error) redirect('/' + locale + '/admin/login?error=credentials');
+  const {data, error} = await supabase.auth.signInWithPassword({email: email.data, password: password.data});
+  if (error || !data.user) redirect('/' + locale + '/admin/login?error=credentials');
+  if (data.user.app_metadata?.platform_role === 'superadmin') {
+    redirect('/' + locale + '/admin/platform');
+  }
   redirect('/' + locale + '/admin');
 }
 
