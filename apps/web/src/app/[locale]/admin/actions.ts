@@ -43,6 +43,8 @@ export async function updateBusinessSettings(formData: FormData) {
     address: z.string().max(250).catch('').parse(formData.get('address')),
     map_url: z.string().url().max(1000).or(z.literal('')).catch('').parse(formData.get('map_url')),
     whatsapp_number: z.string().max(40).catch('').parse(formData.get('whatsapp_number')),
+    brand_primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).catch('#173b35').parse(formData.get('brand_primary')),
+    brand_secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/).catch('#d6a46b').parse(formData.get('brand_secondary')),
     timezone: 'Africa/Luanda'
   };
 
