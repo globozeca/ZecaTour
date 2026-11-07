@@ -23,13 +23,15 @@ stable
 security definer
 set search_path = ''
 as $$
-  select t.id, t.name, t.slug, t.status, tm.role
+  select t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug,
+         t.status as tenant_status, tm.role as member_role
   from public.tenant_members tm
   join public.tenants t on t.id = tm.tenant_id
   where tm.user_id = (select auth.uid())
     and t.status in ('trial', 'active')
   union all
-  select t.id, t.name, t.slug, t.status, 'owner'::public.member_role
+  select t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug,
+         t.status as tenant_status, 'owner'::public.member_role as member_role
   from public.tenants t
   where public.is_platform_admin()
     and not exists (
