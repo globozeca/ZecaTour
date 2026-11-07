@@ -3,7 +3,9 @@ import {setRequestLocale} from 'next-intl/server';
 import {createClient} from '@/lib/supabase/server';
 import {addPlatformTenantManager, createPlatformTenant, logoutPlatformAdmin, removePlatformTenantManager, updatePlatformTenantDetails, updatePlatformTenantStatus} from './actions';
 
-type PlatformMember = { tenant_id: string; user_id: string; member_email: string; member_role: 'owner' | 'manager'; member_created_at: string; };\n\ntype PlatformTenant = {
+type PlatformMember = { tenant_id: string; user_id: string; member_email: string | null; member_role: 'owner' | 'manager'; member_created_at: string; };
+
+type PlatformTenant = {
   tenant_id: string;
   tenant_name: string;
   tenant_slug: string;
@@ -36,13 +38,18 @@ export default async function PlatformAdminDashboard({
   if (!authData.user) redirect('/' + locale + '/admin/login');
   if (authData.user.app_metadata?.platform_role !== 'superadmin') redirect('/' + locale + '/admin');
 
-  const {data, error} = await supabase.rpc('get_platform_tenants');
+  const [{data, error}, {data: memberData}] = await Promise.all([
+    supabase.rpc('get_platform_tenants'),
+    supabase.rpc('get_platform_tenant_members')
+  ]);
   const tenants = (data || []) as PlatformTenant[];
+  const members = (memberData || []) as PlatformMember[];
   const alertText = query.created ? 'Empresa criada e responsável associado.' :
     query.saved ? 'Estado da empresa actualizado.' :
     query.error === 'fields' ? 'Verifique os campos do formulário.' :
     query.error === 'create' ? 'Não foi possível criar a empresa. Confirme se o responsável já tem conta no Supabase Auth e se o slug está disponível.' :
-    query.error === 'update' ? 'Não foi possível actualizar a empresa.' :\n    query.error === 'member' ? 'Não foi possível gerir o membro. Confirme se a conta existe no Supabase Auth.' :
+    query.error === 'update' ? 'Não foi possível actualizar a empresa.' :
+    query.error === 'member' ? 'Não foi possível gerir o membro. Confirme se a conta existe no Supabase Auth.' :
     query.error ? 'Não foi possível concluir a operação.' : '';
 
   return <main className="min-h-screen bg-[#f7f5ef] text-[#18332d]">
@@ -93,7 +100,7 @@ export default async function PlatformAdminDashboard({
             </form>
             <div className="mt-5 border-t border-[#e1dbcf] pt-4">
               <h4 className="text-sm font-semibold">Membros e funcionários</h4>
-              <ul className="mt-3 space-y-2">{members.filter((member) => member.tenant_id === tenant.tenant_id).map((member) => <li key={member.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs"><span>{member.member_email} · {member.member_role === 'owner' ? 'Proprietário' : 'Gestor'}</span>{member.member_role === 'manager' && <form action={removePlatformTenantManager}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="user_id" value={member.user_id}/><button className="text-red-700 underline">Remover gestor</button></form>}</li>)}</ul>
+              <ul className="mt-3 space-y-2">{members.filter((member) => member.tenant_id === tenant.tenant_id).map((member) => <li key={member.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs"><span>{member.member_email || 'Email indisponível'} · {member.member_role === 'owner' ? 'Proprietário' : 'Gestor'}</span>{member.member_role === 'manager' && <form action={removePlatformTenantManager}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="user_id" value={member.user_id}/><button className="text-red-700 underline">Remover gestor</button></form>}</li>)}</ul>
               <form action={addPlatformTenantManager} className="mt-4 flex flex-wrap gap-2">
                 <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/>
                 <input required type="email" name="email" placeholder="email@empresa.com" className="min-w-0 flex-1 rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/>
