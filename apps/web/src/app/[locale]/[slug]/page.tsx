@@ -242,7 +242,7 @@ export default async function TenantHome({
 
       <section id="reservar" className="mx-auto max-w-7xl scroll-mt-8 px-6 py-20">
         <div className="grid gap-12 md:grid-cols-[0.8fr_1.2fr]">
-          <div><p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a56e3f]">ALFA</p><h2 className="text-4xl font-semibold">{t.reserve}</h2><p className="mt-5 leading-7 text-[#66756d]">{t.intro}</p></div>
+          <div><p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a56e3f]">{tenantName.toUpperCase()}</p><h2 className="text-4xl font-semibold">{t.reserve}</h2><p className="mt-5 leading-7 text-[#66756d]">{t.intro}</p></div>
           <div>
             {statusMessage && <p role="status" className="mb-5 rounded-xl bg-[#e7eee8] p-4 text-sm">{statusMessage}</p>}
             <form action={createReservation} className="grid gap-4 sm:grid-cols-2">
