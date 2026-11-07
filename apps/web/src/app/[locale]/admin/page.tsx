@@ -1,7 +1,7 @@
 import {redirect} from 'next/navigation';
 import {setRequestLocale} from 'next-intl/server';
 import {createClient} from '@/lib/supabase/server';
-import {createMenuCategory, createMenuProduct, logoutAdmin, updateBusinessSettings, updateReservationStatus} from './actions';
+import {createMenuCategory, createMenuProduct, deleteMenuCategory, deleteMenuProduct, logoutAdmin, updateBusinessSettings, updateMenuCategory, updateMenuProduct, updateReservationStatus} from './actions';
 
 export default async function AdminDashboard({
   params,
@@ -38,7 +38,7 @@ export default async function AdminDashboard({
     supabase.from('tenant_settings').select('address,map_url,whatsapp_number,brand_primary,brand_secondary').eq('tenant_id', tenant.tenant_id).maybeSingle(),
     supabase.from('reservations').select('id,customer_name,customer_phone,customer_email,reservation_date,reservation_time,party_size,message,status,created_at').eq('tenant_id', tenant.tenant_id).order('created_at', {ascending: false}).limit(100),
     supabase.from('menu_categories').select('id,name,is_active,sort_order').eq('tenant_id', tenant.tenant_id).order('sort_order'),
-    supabase.from('menu_products').select('id,name,price,currency,is_available,category_id').eq('tenant_id', tenant.tenant_id).order('sort_order')
+    supabase.from('menu_products').select('id,name,description,price,currency,is_available,category_id,sort_order').eq('tenant_id', tenant.tenant_id).order('sort_order')
   ]);
   const settings = settingsResult.data;
   const reservations = reservationsResult.data || [];
@@ -93,9 +93,44 @@ export default async function AdminDashboard({
             <button className="rounded-full border border-[#173b35] px-5 py-3 text-sm font-semibold">Adicionar produto</button>
           </form>
         </div>
-        <div className="mt-8 grid gap-8 md:grid-cols-2">
-          <div><h3 className="mb-3 font-semibold">Categorias existentes</h3>{categories.length ? <ul className="space-y-2 text-sm">{categories.map((category) => <li key={category.id} className="rounded-lg bg-[#f7f5ef] p-3">{category.name?.pt || category.name?.en || 'Categoria'}</li>)}</ul> : <p className="text-sm text-[#66756d]">Ainda não existem categorias.</p>}</div>
-          <div><h3 className="mb-3 font-semibold">Produtos existentes</h3>{products.length ? <ul className="space-y-2 text-sm">{products.map((product) => <li key={product.id} className="flex justify-between gap-3 rounded-lg bg-[#f7f5ef] p-3"><span>{product.name?.pt || product.name?.en || 'Produto'}</span><strong>{Number(product.price).toLocaleString('pt-PT')} Kz</strong></li>)}</ul> : <p className="text-sm text-[#66756d]">Ainda não existem produtos.</p>}</div>
+        <div className="mt-8 grid gap-8">
+          <div>
+            <h3 className="mb-3 font-semibold">Gerir categorias</h3>
+            {categories.length ? <div className="space-y-3">{categories.map((category) => <div key={category.id} className="rounded-xl bg-[#f7f5ef] p-4">
+              <form action={updateMenuCategory} className="grid gap-3 sm:grid-cols-[1fr_100px_auto] sm:items-end">
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="category_id" value={category.id}/>
+                <label className="grid gap-1 text-xs">Nome<input name="name" required maxLength={80} defaultValue={category.name?.pt || category.name?.en || ''} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                <label className="grid gap-1 text-xs">Ordem<input name="sort_order" type="number" min="0" defaultValue={category.sort_order} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="is_active" defaultChecked={category.is_active}/> Activa</label>
+                <button className="rounded-full border border-[#173b35] px-4 py-2 text-xs font-semibold sm:col-span-3 sm:justify-self-start">Guardar categoria</button>
+              </form>
+              <form action={deleteMenuCategory} className="mt-2">
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="category_id" value={category.id}/>
+                <button className="text-xs text-red-700 underline">Eliminar categoria</button>
+              </form>
+            </div>)}</div> : <p className="text-sm text-[#66756d]">Ainda não existem categorias.</p>}
+          </div>
+          <div>
+            <h3 className="mb-3 font-semibold">Gerir produtos</h3>
+            {products.length ? <div className="grid gap-3 lg:grid-cols-2">{products.map((product) => <div key={product.id} className="rounded-xl bg-[#f7f5ef] p-4">
+              <form action={updateMenuProduct} className="grid gap-3">
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="product_id" value={product.id}/>
+                <label className="grid gap-1 text-xs">Nome<input name="name" required maxLength={100} defaultValue={product.name?.pt || product.name?.en || ''} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                <label className="grid gap-1 text-xs">Descrição<textarea name="description" maxLength={500} rows={2} defaultValue={product.description?.pt || product.description?.en || ''} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-1 text-xs">Preço (Kz)<input name="price" type="number" min="0" step="0.01" required defaultValue={Number(product.price)} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                  <label className="grid gap-1 text-xs">Ordem<input name="sort_order" type="number" min="0" defaultValue={product.sort_order} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"/></label>
+                </div>
+                <label className="grid gap-1 text-xs">Categoria<select name="category_id" defaultValue={product.category_id || ''} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2 text-sm"><option value="">Sem categoria</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name?.pt || category.name?.en || 'Categoria'}</option>)}</select></label>
+                <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="is_available" defaultChecked={product.is_available}/> Disponível no menu público</label>
+                <button className="rounded-full border border-[#173b35] px-4 py-2 text-xs font-semibold">Guardar produto</button>
+              </form>
+              <form action={deleteMenuProduct} className="mt-2">
+                <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="product_id" value={product.id}/>
+                <button className="text-xs text-red-700 underline">Eliminar produto</button>
+              </form>
+            </div>)}</div> : <p className="text-sm text-[#66756d]">Ainda não existem produtos.</p>}
+          </div>
         </div>
       </section>
 
