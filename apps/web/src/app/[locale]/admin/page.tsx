@@ -77,6 +77,10 @@ export default async function AdminDashboard({
   const products = productsResult.data || [];
   const hours = hoursResult.data || [];
   const socials = socialsResult.data || [];
+  const subscriptionResult = tenant.member_role === 'owner'
+    ? await supabase.from('subscriptions').select('plan_code,status,trial_ends_at,current_period_end').eq('tenant_id', tenant.tenant_id).maybeSingle()
+    : {data: null};
+  const subscription = subscriptionResult.data;
   const galleryItems = galleryResult.data || [];
   const weekdayNames = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const statusLabel: Record<string,string> = {pending:'Pendente',confirmed:'Confirmada',rejected:'Recusada',cancelled:'Cancelada',completed:'Concluída'};
@@ -111,6 +115,16 @@ export default async function AdminDashboard({
         <div className="rounded-2xl bg-white p-6"><p className="text-sm text-[#66756d]">Categorias do menu</p><p className="mt-2 text-3xl font-semibold">{categories.length}</p></div>
         <div className="rounded-2xl bg-white p-6"><p className="text-sm text-[#66756d]">Produtos</p><p className="mt-2 text-3xl font-semibold">{products.length}</p></div>
       </div>
+
+      {tenant.member_role === 'owner' && <section className="rounded-2xl bg-white p-6 sm:p-8">
+        <h2 className="text-xl font-semibold">Plano e subscrição</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div><p className="text-xs text-[#66756d]">Plano</p><p className="mt-1 font-semibold">{subscription?.plan_code || 'starter'}</p></div>
+          <div><p className="text-xs text-[#66756d]">Estado</p><p className="mt-1 font-semibold">{subscription?.status || 'trialing'}</p></div>
+          <div><p className="text-xs text-[#66756d]">Fim do período experimental</p><p className="mt-1 font-semibold">{subscription?.trial_ends_at ? new Date(subscription.trial_ends_at).toLocaleDateString('pt-PT') : 'Por definir'}</p></div>
+        </div>
+        <p className="mt-3 text-xs text-[#66756d]">Informação visível apenas ao proprietário. A gestão de pagamentos será ligada ao sistema de subscrições numa etapa própria.</p>
+      </section>}
 
       <section className="rounded-2xl bg-white p-6 sm:p-8">
         <h2 className="text-xl font-semibold">Dados públicos do estabelecimento</h2>
