@@ -9,6 +9,9 @@ export async function getCurrentUserTenantRole(
   const {data: authData, error: authError} = await supabase.auth.getUser();
   if (authError || !authData.user) return null;
 
+  const {data: platformAdmin, error: platformAdminError} = await supabase.rpc('is_platform_admin');
+  if (!platformAdminError && platformAdmin === true) return 'owner';
+
   const {data: membership, error} = await supabase
     .from('tenant_members')
     .select('role')
