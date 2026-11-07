@@ -27,8 +27,16 @@ as $$
   from public.tenant_members tm
   join public.tenants t on t.id = tm.tenant_id
   where tm.user_id = (select auth.uid())
-    and (t.status in ('trial', 'active') or public.is_platform_admin())
-  order by t.created_at asc;
+    and t.status in ('trial', 'active')
+  union all
+  select t.id, t.name, t.slug, t.status, 'owner'::public.member_role
+  from public.tenants t
+  where public.is_platform_admin()
+    and not exists (
+      select 1 from public.tenant_members tm
+      where tm.tenant_id = t.id and tm.user_id = (select auth.uid())
+    )
+  order by tenant_name;
 $$;
 
 create or replace function public.create_tenant_for_current_user(
