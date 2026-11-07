@@ -6,13 +6,13 @@ begin;
 
 create or replace function public.get_my_tenants()
 returns table (tenant_id uuid, tenant_name text, tenant_slug text, tenant_status public.tenant_status, member_role public.member_role)
-language sql stable security definer set search_path = '' as $
+language sql stable security definer set search_path = '' as $function$
   select t.id, t.name, t.slug, t.status, coalesce(tm.role, 'owner'::public.member_role)
   from public.tenants t
   left join public.tenant_members tm on tm.tenant_id = t.id and tm.user_id = (select auth.uid())
   where public.is_platform_admin() or (tm.user_id = (select auth.uid()) and t.status in ('trial', 'active'))
   order by t.name;
-$;
+$function$;
 
 create or replace function public.get_platform_tenants()
 returns table (
@@ -141,7 +141,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $function$
 begin
   if not public.is_platform_admin() then
     raise exception 'Platform administrator access required' using errcode = '42501';
@@ -153,7 +153,7 @@ begin
   join auth.users u on u.id = tm.user_id
   order by tm.tenant_id, tm.role, u.email;
 end;
-$;
+$function$;
 
 create or replace function public.platform_add_tenant_manager(
   input_tenant_id uuid,
@@ -163,7 +163,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   v_user_id uuid;
   v_email text := lower(trim(input_email));
@@ -175,7 +175,7 @@ begin
     raise exception 'Tenant not found' using errcode = 'P0002';
   end if;
   if v_email is null or length(v_email) > 254
-     or v_email !~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+ then
+     or v_email not like '%@%.%' then
     raise exception 'A valid email is required' using errcode = '22023';
   end if;
 
@@ -189,7 +189,7 @@ begin
   values (input_tenant_id, v_user_id, 'manager')
   on conflict (tenant_id, user_id) do nothing;
 end;
-$;
+$function$;
 
 create or replace function public.platform_remove_tenant_manager(
   input_tenant_id uuid,
@@ -199,7 +199,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 begin
   if not public.is_platform_admin() then
     raise exception 'Platform administrator access required' using errcode = '42501';
@@ -210,7 +210,7 @@ begin
     and user_id = input_user_id
     and role = 'manager';
 end;
-$;
+$function$;
 
 revoke all on function public.get_platform_tenant_members() from public, anon;
 revoke all on function public.platform_add_tenant_manager(uuid, text) from public, anon;
