@@ -114,8 +114,8 @@ export async function saveBusinessHour(formData: FormData) {
   const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
   const weekday = z.coerce.number().int().min(0).max(6).safeParse(formData.get('weekday'));
   const isClosed = formData.get('is_closed') === 'on';
-  const opensAt = z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d$/).safeParse(formData.get('opens_at'));
-  const closesAt = z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d$/).safeParse(formData.get('closes_at'));
+  const opensAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('opens_at'));
+  const closesAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('closes_at'));
   if (!tenantId.success || !weekday.success || (!isClosed && (!opensAt.success || !closesAt.success))) redirect('/' + locale + '/admin?error=hours');
   const supabase = await createClient();
   if (!supabase) redirect('/' + locale + '/admin?error=config');
