@@ -45,6 +45,14 @@ type SocialLink = {
   url: string;
 };
 
+type GalleryImage = {
+  id: string;
+  title: JsonText;
+  alt_text: JsonText;
+  image_path: string;
+  sort_order: number;
+};
+
 function localized(value: JsonText, locale: string) {
   if (typeof value === 'string') return value;
   if (!value || typeof value !== 'object') return '';
@@ -112,6 +120,7 @@ export default async function TenantHome({
   let products: MenuProduct[] = [];
   let hours: BusinessHour[] = [];
   let socials: SocialLink[] = [];
+  let gallery: GalleryImage[] = [];
 
   if (supabase) {
     const {data: profileData} = await supabase.rpc('get_public_tenant_profile_by_slug', {input_slug: slug});
@@ -124,16 +133,18 @@ export default async function TenantHome({
     }
 
     const tenantId = profile.tenant_id as string;
-    const [categoryResult, productResult, hoursResult, socialResult] = await Promise.all([
+    const [categoryResult, productResult, hoursResult, socialResult, galleryResult] = await Promise.all([
       supabase.from('menu_categories').select('id,name,description,sort_order').eq('tenant_id', tenantId).eq('is_active', true).order('sort_order'),
       supabase.from('menu_products').select('id,category_id,name,description,price,currency,sort_order').eq('tenant_id', tenantId).eq('is_available', true).order('sort_order'),
       supabase.from('business_hours').select('weekday,opens_at,closes_at,is_closed').eq('tenant_id', tenantId).order('weekday'),
-      supabase.from('social_links').select('platform,url').eq('tenant_id', tenantId).order('sort_order')
+      supabase.from('social_links').select('platform,url').eq('tenant_id', tenantId).order('sort_order'),
+      supabase.from('galleries').select('id,title,alt_text,image_path,sort_order').eq('tenant_id', tenantId).eq('is_published', true).order('sort_order')
     ]);
     categories = (categoryResult.data ?? []) as unknown as MenuCategory[];
     products = (productResult.data ?? []) as unknown as MenuProduct[];
     hours = (hoursResult.data ?? []) as unknown as BusinessHour[];
     socials = (socialResult.data ?? []) as unknown as SocialLink[];
+    gallery = (galleryResult.data ?? []) as unknown as GalleryImage[];
   } else if (slug !== 'alfa') {
     notFound();
   }
@@ -194,6 +205,21 @@ export default async function TenantHome({
           </div>
         )}
       </section>
+
+      {gallery.length > 0 && <section id="galeria" className="mx-auto max-w-7xl px-6 py-20">
+        <div className="mb-8"><p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a56e3f]">{tenantName}</p><h2 className="text-4xl font-semibold">Galeria</h2></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {gallery.map((photo) => <figure key={photo.id} className="overflow-hidden rounded-2xl bg-white">
+            <img
+              src={supabase?.storage.from('tenant-gallery').getPublicUrl(photo.image_path).data.publicUrl}
+              alt={localized(photo.alt_text, locale) || localized(photo.title, locale)}
+              loading="lazy"
+              className="aspect-[4/3] w-full object-cover"
+            />
+            {localized(photo.title, locale) && <figcaption className="p-4 text-sm font-medium">{localized(photo.title, locale)}</figcaption>}
+          </figure>)}
+        </div>
+      </section>}
 
       <section className="bg-[#eeeae1] px-6 py-16">
         <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-2">
