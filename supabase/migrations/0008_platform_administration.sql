@@ -119,4 +119,94 @@ revoke all on function public.create_tenant_for_platform_admin(text, text, text)
 grant execute on function public.get_platform_tenants() to authenticated;
 grant execute on function public.create_tenant_for_platform_admin(text, text, text) to authenticated;
 
+create or replace function public.get_platform_tenant_members()
+returns table (
+  tenant_id uuid,
+  user_id uuid,
+  member_email text,
+  member_role public.member_role,
+  member_created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $
+begin
+  if not public.is_platform_admin() then
+    raise exception 'Platform administrator access required' using errcode = '42501';
+  end if;
+
+  return query
+  select tm.tenant_id, tm.user_id, u.email, tm.role, tm.created_at
+  from public.tenant_members tm
+  join auth.users u on u.id = tm.user_id
+  order by tm.tenant_id, tm.role, u.email;
+end;
+$;
+
+create or replace function public.platform_add_tenant_manager(
+  input_tenant_id uuid,
+  input_email text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_user_id uuid;
+  v_email text := lower(trim(input_email));
+begin
+  if not public.is_platform_admin() then
+    raise exception 'Platform administrator access required' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.tenants t where t.id = input_tenant_id) then
+    raise exception 'Tenant not found' using errcode = 'P0002';
+  end if;
+  if v_email is null or length(v_email) > 254
+     or v_email !~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+ then
+    raise exception 'A valid email is required' using errcode = '22023';
+  end if;
+
+  select u.id into v_user_id from auth.users u where lower(u.email) = v_email limit 1;
+  if v_user_id is null then
+    raise exception 'User account not found in Supabase Auth' using errcode = 'P0002';
+  end if;
+
+  insert into public.profiles (id) values (v_user_id) on conflict (id) do nothing;
+  insert into public.tenant_members (tenant_id, user_id, role)
+  values (input_tenant_id, v_user_id, 'manager')
+  on conflict (tenant_id, user_id) do nothing;
+end;
+$;
+
+create or replace function public.platform_remove_tenant_manager(
+  input_tenant_id uuid,
+  input_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not public.is_platform_admin() then
+    raise exception 'Platform administrator access required' using errcode = '42501';
+  end if;
+
+  delete from public.tenant_members
+  where tenant_id = input_tenant_id
+    and user_id = input_user_id
+    and role = 'manager';
+end;
+$;
+
+revoke all on function public.get_platform_tenant_members() from public, anon;
+revoke all on function public.platform_add_tenant_manager(uuid, text) from public, anon;
+revoke all on function public.platform_remove_tenant_manager(uuid, uuid) from public, anon;
+grant execute on function public.get_platform_tenant_members() to authenticated;
+grant execute on function public.platform_add_tenant_manager(uuid, text) to authenticated;
+grant execute on function public.platform_remove_tenant_manager(uuid, uuid) to authenticated;
+
 commit;
