@@ -41,7 +41,7 @@ begin
       and p.proname = 'create_tenant_for_current_user'
       and p.prosecdef = true
       and p.proconfig is not null
-      and exists (select 1 from unnest(p.proconfig) setting where setting like 'search_path=%')
+      and exists (select 1 from unnest(p.proconfig) setting where setting = 'search_path=""')
   ) then
     raise exception 'Tenant creation RPC must be SECURITY DEFINER with empty search_path';
   end if;
