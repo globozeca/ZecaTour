@@ -43,6 +43,8 @@ export async function updateBusinessSettings(formData: FormData) {
     address: z.string().max(250).catch('').parse(formData.get('address')),
     map_url: z.string().url().max(1000).or(z.literal('')).catch('').parse(formData.get('map_url')),
     whatsapp_number: z.string().max(40).catch('').parse(formData.get('whatsapp_number')),
+    brand_primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).catch('#173b35').parse(formData.get('brand_primary')),
+    brand_secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/).catch('#d6a46b').parse(formData.get('brand_secondary')),
     timezone: 'Africa/Luanda'
   };
 
@@ -104,5 +106,55 @@ export async function createMenuProduct(formData: FormData) {
     currency: 'AOA'
   });
   if (error) redirect('/' + locale + '/admin?error=product');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function saveBusinessHour(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  const weekday = z.coerce.number().int().min(0).max(6).safeParse(formData.get('weekday'));
+  const isClosed = formData.get('is_closed') === 'on';
+  const opensAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('opens_at'));
+  const closesAt = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).safeParse(formData.get('closes_at'));
+  if (!tenantId.success || !weekday.success || (!isClosed && (!opensAt.success || !closesAt.success))) redirect('/' + locale + '/admin?error=hours');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('business_hours').upsert({
+    tenant_id: tenantId.data,
+    weekday: weekday.data,
+    is_closed: isClosed,
+    opens_at: isClosed ? null : opensAt.data,
+    closes_at: isClosed ? null : closesAt.data
+  }, {onConflict: 'tenant_id,weekday'});
+  if (error) redirect('/' + locale + '/admin?error=hours');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function saveSocialLink(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  const platform = z.enum(['Instagram','Facebook','LinkedIn','TikTok','YouTube','X','Website']).safeParse(formData.get('platform'));
+  const url = z.string().url().max(1000).refine((value) => value.startsWith('https://')).safeParse(formData.get('url'));
+  if (!tenantId.success || !platform.success || !url.success) redirect('/' + locale + '/admin?error=social');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('social_links').upsert({
+    tenant_id: tenantId.data,
+    platform: platform.data,
+    url: url.data
+  }, {onConflict: 'tenant_id,platform'});
+  if (error) redirect('/' + locale + '/admin?error=social');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function deleteSocialLink(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  const platform = z.string().min(2).max(40).safeParse(formData.get('platform'));
+  if (!tenantId.success || !platform.success) redirect('/' + locale + '/admin?error=social');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('social_links').delete().eq('tenant_id', tenantId.data).eq('platform', platform.data);
+  if (error) redirect('/' + locale + '/admin?error=social');
   redirect('/' + locale + '/admin?saved=1');
 }

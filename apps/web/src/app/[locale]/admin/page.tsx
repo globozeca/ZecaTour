@@ -1,7 +1,7 @@
 import {redirect} from 'next/navigation';
 import {setRequestLocale} from 'next-intl/server';
 import {createClient} from '@/lib/supabase/server';
-import {createMenuCategory, createMenuProduct, logoutAdmin, updateBusinessSettings, updateReservationStatus} from './actions';
+import {createMenuCategory, createMenuProduct, deleteSocialLink, logoutAdmin, saveBusinessHour, saveSocialLink, updateBusinessSettings, updateReservationStatus} from './actions';
 
 export default async function AdminDashboard({
   params,
@@ -34,16 +34,21 @@ export default async function AdminDashboard({
     </div>
   </main>;
 
-  const [settingsResult, reservationsResult, categoriesResult, productsResult] = await Promise.all([
+  const [settingsResult, reservationsResult, categoriesResult, productsResult, hoursResult, socialsResult] = await Promise.all([
     supabase.from('tenant_settings').select('address,map_url,whatsapp_number,brand_primary,brand_secondary').eq('tenant_id', tenant.tenant_id).maybeSingle(),
     supabase.from('reservations').select('id,customer_name,customer_phone,customer_email,reservation_date,reservation_time,party_size,message,status,created_at').eq('tenant_id', tenant.tenant_id).order('created_at', {ascending: false}).limit(100),
     supabase.from('menu_categories').select('id,name,is_active,sort_order').eq('tenant_id', tenant.tenant_id).order('sort_order'),
-    supabase.from('menu_products').select('id,name,price,currency,is_available,category_id').eq('tenant_id', tenant.tenant_id).order('sort_order')
+    supabase.from('menu_products').select('id,name,price,currency,is_available,category_id').eq('tenant_id', tenant.tenant_id).order('sort_order'),
+    supabase.from('business_hours').select('weekday,opens_at,closes_at,is_closed').eq('tenant_id', tenant.tenant_id).order('weekday'),
+    supabase.from('social_links').select('platform,url').eq('tenant_id', tenant.tenant_id).order('sort_order')
   ]);
   const settings = settingsResult.data;
   const reservations = reservationsResult.data || [];
   const categories = categoriesResult.data || [];
   const products = productsResult.data || [];
+  const hours = hoursResult.data || [];
+  const socials = socialsResult.data || [];
+  const weekdayNames = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const statusLabel: Record<string,string> = {pending:'Pendente',confirmed:'Confirmada',rejected:'Recusada',cancelled:'Cancelada',completed:'Concluída'};
   const alertText = query.saved ? 'Alterações guardadas.' : query.error ? 'Não foi possível guardar. Verifique os campos e as permissões.' : '';
 
@@ -70,8 +75,43 @@ export default async function AdminDashboard({
           <label className="grid gap-2 text-sm sm:col-span-2">Morada<input name="address" defaultValue={settings?.address || ''} maxLength={250} className="rounded-xl border border-[#d5cfc3] px-4 py-3"/></label>
           <label className="grid gap-2 text-sm">WhatsApp<input name="whatsapp_number" defaultValue={settings?.whatsapp_number || ''} maxLength={40} className="rounded-xl border border-[#d5cfc3] px-4 py-3"/></label>
           <label className="grid gap-2 text-sm">Ligação do mapa<input name="map_url" type="url" defaultValue={settings?.map_url || ''} className="rounded-xl border border-[#d5cfc3] px-4 py-3"/></label>
+          <label className="grid gap-2 text-sm">Cor principal<input name="brand_primary" type="color" defaultValue={settings?.brand_primary || '#173b35'} className="h-12 w-full rounded-xl border border-[#d5cfc3] p-1"/></label>
+          <label className="grid gap-2 text-sm">Cor secundária<input name="brand_secondary" type="color" defaultValue={settings?.brand_secondary || '#d6a46b'} className="h-12 w-full rounded-xl border border-[#d5cfc3] p-1"/></label>
           <button className="rounded-full bg-[#173b35] px-6 py-3 font-semibold text-white sm:col-span-2 sm:justify-self-start">Guardar dados</button>
         </form>
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 sm:p-8">
+        <h2 className="text-xl font-semibold">Horários de funcionamento</h2>
+        <p className="mt-2 text-sm text-[#66756d]">Configure cada dia da semana. Os horários são apresentados no website público.</p>
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          {weekdayNames.map((day, weekday) => {
+            const current = hours.find((item) => item.weekday === weekday);
+            return <form key={weekday} action={saveBusinessHour} className="grid gap-3 rounded-xl bg-[#f7f5ef] p-4">
+              <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="weekday" value={weekday}/>
+              <div className="flex items-center justify-between gap-3"><strong className="text-sm">{day}</strong><label className="flex items-center gap-2 text-xs"><input type="checkbox" name="is_closed" defaultChecked={current?.is_closed || false}/> Encerrado</label></div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1 text-xs">Abertura<input type="time" name="opens_at" defaultValue={current?.opens_at ? String(current.opens_at).slice(0,5) : '09:00'} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2"/></label>
+                <label className="grid gap-1 text-xs">Fecho<input type="time" name="closes_at" defaultValue={current?.closes_at ? String(current.closes_at).slice(0,5) : '18:00'} className="rounded-lg border border-[#d5cfc3] bg-white px-3 py-2"/></label>
+              </div>
+              <button className="rounded-full border border-[#173b35] px-4 py-2 text-xs font-semibold sm:justify-self-start">Guardar horário</button>
+            </form>;
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 sm:p-8">
+        <h2 className="text-xl font-semibold">Redes sociais e ligações</h2>
+        <form action={saveSocialLink} className="mt-6 grid gap-3 sm:grid-cols-[180px_1fr_auto]">
+          <input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/>
+          <select name="platform" required className="rounded-xl border border-[#d5cfc3] bg-white px-4 py-3"><option value="Instagram">Instagram</option><option value="Facebook">Facebook</option><option value="LinkedIn">LinkedIn</option><option value="TikTok">TikTok</option><option value="YouTube">YouTube</option><option value="X">X</option><option value="Website">Website</option></select>
+          <input name="url" type="url" required placeholder="https://..." className="rounded-xl border border-[#d5cfc3] px-4 py-3"/>
+          <button className="rounded-full bg-[#173b35] px-5 py-3 text-sm font-semibold text-white">Guardar ligação</button>
+        </form>
+        {socials.length ? <ul className="mt-5 space-y-2">{socials.map((social) => <li key={social.platform} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] p-3 text-sm">
+          <span><strong>{social.platform}</strong> · <a href={social.url} target="_blank" rel="noreferrer" className="underline">{social.url}</a></span>
+          <form action={deleteSocialLink}><input type="hidden" name="locale" value={locale}/><input type="hidden" name="tenant_id" value={tenant.tenant_id}/><input type="hidden" name="platform" value={social.platform}/><button className="text-xs text-red-700 underline">Eliminar</button></form>
+        </li>)}</ul> : <p className="mt-5 text-sm text-[#66756d]">Ainda não existem ligações configuradas.</p>}
       </section>
 
       <section className="rounded-2xl bg-white p-6 sm:p-8">
