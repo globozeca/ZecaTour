@@ -106,3 +106,69 @@ export async function createMenuProduct(formData: FormData) {
   if (error) redirect('/' + locale + '/admin?error=product');
   redirect('/' + locale + '/admin?saved=1');
 }
+
+export async function updateMenuCategory(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const id = z.string().uuid().safeParse(formData.get('category_id'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  const name = z.string().trim().min(2).max(80).safeParse(formData.get('name'));
+  const sortOrder = z.coerce.number().int().min(0).max(10000).safeParse(formData.get('sort_order'));
+  if (!id.success || !tenantId.success || !name.success || !sortOrder.success) redirect('/' + locale + '/admin?error=category');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('menu_categories').update({
+    name: {pt: name.data, en: name.data, fr: name.data},
+    sort_order: sortOrder.data,
+    is_active: formData.get('is_active') === 'on'
+  }).eq('id', id.data).eq('tenant_id', tenantId.data);
+  if (error) redirect('/' + locale + '/admin?error=category');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function deleteMenuCategory(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const id = z.string().uuid().safeParse(formData.get('category_id'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  if (!id.success || !tenantId.success) redirect('/' + locale + '/admin?error=category');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('menu_categories').delete().eq('id', id.data).eq('tenant_id', tenantId.data);
+  if (error) redirect('/' + locale + '/admin?error=category');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function updateMenuProduct(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const id = z.string().uuid().safeParse(formData.get('product_id'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  const categoryId = z.string().uuid().or(z.literal('')).safeParse(formData.get('category_id'));
+  const name = z.string().trim().min(2).max(100).safeParse(formData.get('name'));
+  const description = z.string().max(500).catch('').parse(formData.get('description'));
+  const price = z.coerce.number().finite().min(0).max(1000000000).safeParse(formData.get('price'));
+  const sortOrder = z.coerce.number().int().min(0).max(10000).safeParse(formData.get('sort_order'));
+  if (!id.success || !tenantId.success || !categoryId.success || !name.success || !price.success || !sortOrder.success) redirect('/' + locale + '/admin?error=product');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('menu_products').update({
+    category_id: categoryId.data || null,
+    name: {pt: name.data, en: name.data, fr: name.data},
+    description: {pt: description, en: description, fr: description},
+    price: price.data,
+    sort_order: sortOrder.data,
+    is_available: formData.get('is_available') === 'on'
+  }).eq('id', id.data).eq('tenant_id', tenantId.data);
+  if (error) redirect('/' + locale + '/admin?error=product');
+  redirect('/' + locale + '/admin?saved=1');
+}
+
+export async function deleteMenuProduct(formData: FormData) {
+  const locale = localeSchema.catch('pt').parse(formData.get('locale'));
+  const id = z.string().uuid().safeParse(formData.get('product_id'));
+  const tenantId = z.string().uuid().safeParse(formData.get('tenant_id'));
+  if (!id.success || !tenantId.success) redirect('/' + locale + '/admin?error=product');
+  const supabase = await createClient();
+  if (!supabase) redirect('/' + locale + '/admin?error=config');
+  const {error} = await supabase.from('menu_products').delete().eq('id', id.data).eq('tenant_id', tenantId.data);
+  if (error) redirect('/' + locale + '/admin?error=product');
+  redirect('/' + locale + '/admin?saved=1');
+}
